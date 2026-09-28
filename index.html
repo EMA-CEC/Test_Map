@@ -1,0 +1,512 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CEC Applications - GIS Tool</title>
+  <link rel="icon" href="assets/favicon.ico" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+  <link rel="stylesheet" href="style/style.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/proj4@2.8.0"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.min.js"></script>
+
+
+</head>
+<body>
+<div id="container">
+
+  <!-- LEFT SIDEBAR -->
+  <aside id="sidebar" aria-label="Tools sidebar">
+
+    <!-- Header / Branding -->
+    <div id="sidebar-header">
+      <div class="sidebar-brand">
+        <img src="assets/logo.png" alt="CEC Logo" class="sidebar-logo" />
+        <div class="sidebar-title-wrap">
+          <div class="sidebar-title">CEC Applications - GIS Tool</div>
+          <div class="sidebar-subtitle">Environmental Management Authority</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar content: icon bar + tool panel -->
+    <div id="sidebar-content">
+
+      <!-- ICON BAR -->
+      <nav id="icon-bar" aria-label="Tool categories">
+
+        <button class="icon-btn" type="button"
+          data-panel="panel-overview"
+          aria-controls="tool-panel"
+          aria-pressed="true"
+          title="Overview">
+          <span class="icon-glyph" aria-hidden="true">🏠</span>
+          <span class="sr-only">Overview</span>
+        </button>
+
+        <button class="icon-btn" type="button"
+          data-panel="panel-filters"
+          aria-controls="tool-panel"
+          aria-pressed="false"
+          title="Application Filters">
+          <span class="icon-glyph" aria-hidden="true">🔎</span>
+          <span class="sr-only">Application Filters</span>
+        </button>
+
+        <button class="icon-btn" type="button"
+          data-panel="panel-draw"
+          aria-controls="tool-panel"
+          aria-pressed="false"
+          title="Draw Tools">
+          <span class="icon-glyph" aria-hidden="true">✏️</span>
+          <span class="sr-only">Draw Tools</span>
+        </button>
+
+        <button class="icon-btn" type="button"
+          data-panel="panel-data"
+          aria-controls="tool-panel"
+          aria-pressed="false"
+          title="Additional Data">
+          <span class="icon-glyph" aria-hidden="true">🗂️</span>
+          <span class="sr-only">Additional Data</span>
+        </button>
+
+        <button class="icon-btn" type="button"
+          data-panel="panel-analysis"
+          aria-controls="tool-panel"
+          aria-pressed="false"
+          title="Spatial Analysis">
+          <span class="icon-glyph" aria-hidden="true">📏</span>
+          <span class="sr-only">Spatial Analysis</span>
+        </button>
+
+        <div class="icon-bar-spacer"></div>
+
+        <!-- SETTINGS always bottom -->
+        <button class="icon-btn" type="button"
+          data-panel="panel-settings"
+          aria-controls="tool-panel"
+          aria-pressed="false"
+          title="Settings">
+          <span class="icon-glyph" aria-hidden="true">⚙️</span>
+          <span class="sr-only">Settings</span>
+        </button>
+
+      </nav>
+
+      <!-- TOOL PANEL -->
+      <section id="tool-panel" aria-label="Tool panel content">
+
+        <!-- Collapse / Expand Tool Panel Button -->
+        <button id="panel-toggle" type="button"
+          aria-label="Collapse tool panel"
+          aria-expanded="true"
+          title="Collapse panel">◀</button>
+
+        <div id="tool-panel-inner">
+
+          <!-- OVERVIEW -->
+          <div id="panel-overview" class="tool-panel-section" hidden>
+            <h2>Overview</h2>
+
+            <div class="overview-card">
+              <p>
+                This tool integrates CEC Applications and other EMA housed data
+                to offer a basic solution for analysis. It is designed to facilitate
+                general screening and support better informed decision-making.
+              </p>
+
+              <div id="docuLinks">
+                <a href="https://drive.google.com/file/d/1goImDn80Lg9RxxRe6dc0tVqJbVPzmkIF/view" target="_blank" rel="noopener noreferrer">
+                  Documentation
+                </a><br/>
+              </div>
+            </div>
+
+            <!-- CEC and Complaints visualization controls -->
+            <div id="dataViewToggle">
+              <fieldset id="cecDataViewGroup" class="data-view-group disabled">
+                <legend>CEC DATA</legend>
+                <button type="button" onclick="switchDataView('cluster')">Cluster View</button>
+                <button type="button" onclick="switchDataView('heatmap')">Heatmap View</button>
+                <button type="button" onclick="switchDataView('none')">Hide Points</button>
+              </fieldset>
+
+              <fieldset id="complaintsDataViewGroup" class="data-view-group complaints-view-group disabled">
+                <legend>COMPLAINTS DATA</legend>
+                <button type="button" onclick="switchComplaintsView('cluster')">Cluster View</button>
+<!--
+                <button type="button" onclick="switchComplaintsView('heatmap')">Heatmap View</button>
+-->                
+                <button type="button" onclick="switchComplaintsView('none')">Hide Points</button>
+              </fieldset>
+            </div>
+
+          </div>
+
+          <!-- FILTERS -->
+          <div id="panel-filters" class="tool-panel-section" hidden>
+            <h2>Application Filters</h2>
+
+            <div id="filterContainer" class="disabled">
+              <h3>Filter Applications</h3>
+
+              <label for="startDate">Start Date:</label>
+              <input type="date" id="startDate" min="2001-01-01" max="2099-12-31">
+
+              <label for="endDate">End Date:</label>
+              <input type="date" id="endDate" min="2001-01-01" max="2099-12-31">
+
+              <label for="statusSelect">Status:</label>
+              <select id="statusSelect"></select>
+
+              <label for="activitySelect">Designated Activity:</label>
+              <select id="activitySelect"></select>
+
+              <label for="keywordInput">Keyword Search:</label>
+              <input type="text" id="keywordInput" placeholder="Search...">
+
+              <div class="filter-buttons">
+                <button id="applyFiltersBtn">Apply Filters</button>
+                <button id="clearFiltersBtn">Clear Filters</button>
+              </div>
+
+              <div id="filterStats">Showing all applications</div>
+
+              <hr class="section-divider" />
+
+              <!-- CEC Reference Search -->
+              <div id="cecSearchGroup">
+                <label for="cecRefInput">Search by CEC Reference:</label>
+                <input type="text" id="cecRefInput" placeholder="e.g. CEC-1234 or 1234" />
+                <div class="cec-search-buttons">
+                  <button id="cecSearchBtn">🔍 Search</button>
+                  <button id="cecClearBtn">❌ Clear</button>
+                </div>
+              </div>
+
+              <!-- Complaint File Number Search -->
+              <div id="complaintSearchGroup">
+                <label for="complaintFileInput">Search by Complaint File Number:</label>
+                <input type="text" id="complaintFileInput" placeholder="e.g. AIR-0001" autocomplete="off" />
+                <div class="complaint-search-buttons">
+                  <button id="complaintSearchBtn" type="button">🔍 Search</button>
+                  <button id="complaintClearBtn" type="button">❌ Clear</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- DRAW TOOLS -->
+          <div id="panel-draw" class="tool-panel-section" hidden>
+            <h2>Draw Tools</h2>
+
+            <div id="drawToolsContainer">
+              <p>Select a shape to draw:</p>
+              <div class="draw-buttons">
+                <button id="drawPointBtn">🟢 Draw Point</button>
+                <button id="drawPolylineBtn">➖ Draw Line</button>
+                <button id="drawPolygonBtn">🔷 Draw Polygon</button>
+                <button id="drawRectangleBtn">⬛ Draw Rectangle</button>
+                <button id="editDrawBtn">✏️ Edit Drawing</button>
+                <button id="clearDrawBtn">Clear All</button>
+              </div>
+            </div>
+            <hr class="section-divider" />
+
+            <h3>My Shapes</h3>
+            <p class="muted">Shapes you draw will appear here.</p>
+
+            <div id="myShapesList" class="my-shapes-list"></div>
+          </div>
+
+          <!-- ADDITIONAL DATA -->
+          <div id="panel-data" class="tool-panel-section" hidden>
+            <h2>Additional Data</h2>
+
+            <div id="geojsonLayersContainer">
+              <h3>Map Layers</h3>
+              <div id="geojsonLayerList"></div>
+            </div>
+
+            <hr class="section-divider" />
+
+            <div class="upload-card">
+              <h3>Upload User Data</h3>
+              <p class="muted">
+                Upload CSV (UTM), GeoJSON, or ESRI Shapefile ZIP into the map.
+              </p>
+
+              <div class="upload-actions">
+                <button id="btnAddCSV" class="btn">📄 Add CSV</button>
+                <button id="btnAddGeoJSON" class="btn">🧩 Add GeoJSON</button>
+                <button id="btnAddShapefile" class="btn">🗺️ Add Shapefile ZIP</button>
+
+                <!-- hidden file input -->
+                <input id="userUploadInput" type="file" style="display:none;" />
+              </div>
+
+              <!-- uploaded layers appear here -->
+              <div id="userUploadLayerList" class="user-upload-list">
+                <div class="muted small">Uploaded layers will appear here.</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- SPATIAL ANALYSIS -->
+          <div id="panel-analysis" class="tool-panel-section" hidden>
+            <h2>Spatial Analysis</h2>
+            <div class="analysis-card">
+
+              <label class="field-label">Select Source</label>
+              <select id="analysisSourceSelect" class="field-input">
+                <option value="drawn">Drawn Shapes</option>
+                <option value="geojson">GeoJSON Layers</option>
+                <option value="uploaded">Uploaded Layers</option>
+              </select>
+
+              <label class="field-label">Select Shape / Layer</label>
+              <select id="analysisPrimarySelect" class="field-input"></select>
+
+              <label class="field-label">Select Feature (if applicable)</label>
+              <select id="analysisFeatureSelect" class="field-input" disabled>
+                <option value="">-- select feature --</option>
+              </select>
+
+              <hr class="section-divider" />
+
+              <label class="field-label">CEC Buffer Distance (m)</label>
+              <input id="cecBufferInput" type="number" class="field-input" value="500" min="0" step="50"/>
+
+              <div class="analysis-optional">
+                <div class="analysis-optional-title">Optional Parameters</div>
+
+                <label for="saStartDate" class="analysis-optional-label">Start Date</label>
+                <input type="date" id="saStartDate" class="analysis-optional-input">
+
+                <label for="saEndDate" class="analysis-optional-label">End Date</label>
+                <input type="date" id="saEndDate" class="analysis-optional-input">
+
+                <label for="saStatusFilter" class="analysis-optional-label">Status</label>
+                <select id="saStatusFilter" class="analysis-optional-input">
+                  <option value="">(--All--)</option>
+                  <option value="Issued CEC">Issued CEC</option>
+                  <option value="Application Withdrawn">Application Withdrawn</option>
+                  <option value="File closed">File closed</option>
+                  <option value="General Letter">General Letter</option>
+                  <option value="No CEC Required">No CEC Required</option>
+                  <option value="Notice of Refusal">Notice of Refusal</option>
+                  <option value="Pending">Pending</option>
+                </select>
+              </div>
+
+              <label class="field-label">Sensitive Receptor Buffer Distance (m)</label>
+              <input id="receptorBufferInput" type="number" class="field-input" value="1000" min="0" step="50"/>
+
+              <div class="analysis-actions">
+                <button id="runSpatialAnalysisBtn" class="btn primary">
+                  ▶ Run Analysis
+                </button>
+
+                <button id="clearSpatialAnalysisBtn" class="btn secondary">
+                  Reset Map 
+                </button>
+              </div>
+
+              <button id="showSpatialResultsBtn" class="btn full-width" disabled>
+                📄 Show Results
+              </button>
+
+              <div id="analysisStatusText" class="analysis-status"></div>
+
+            </div>
+          </div>
+
+          <!-- SETTINGS -->
+          <div id="panel-settings" class="tool-panel-section" hidden>
+            <h2>Settings</h2>
+
+            <div class="settings-card">
+              <label class="toggle-row">
+                <input type="checkbox" id="roadsToggle" checked />
+                <span>Show Roads Layer</span>
+              </label>
+            </div>
+
+            <hr class="section-divider" />
+
+            <!-- Information block -->
+            <div class="info-card">
+              <img src="assets/logo.png" alt="Logo" class="contact-logo" />
+              <div class="cec-contact">
+                <p>
+                  CEC Unit – Technical Services<br>
+                  Environmental Management Authority<br>
+                  <a href="mailto:CEC@ema.co.tt">CEC@ema.co.tt</a>
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+        </div><!-- tool-panel-inner -->
+      </section><!-- tool-panel -->
+
+    </div><!-- sidebar-content -->
+  </aside>
+
+  <!-- MAP -->
+  <div id="map"></div>
+
+  <!-- Top-right unified search -->
+  <div id="top-right-controls">
+    <div class="search-wrap">
+      <input id="unifiedSearchInput"
+        type="text"
+        placeholder="Search location, Lat/Lon, or UTM (E,N)"
+        autocomplete="off" />
+      <button id="unifiedSearchClear" title="Clear">✖</button>
+    </div>
+    <ul id="unifiedSearchSuggestions" class="suggestions-list"></ul>
+  </div>
+
+<div id="inset-map"></div>
+
+</div><!-- container -->
+
+<!------------------------------------------------------------>
+	<div id="labelModal" class="modal">
+	  <div class="modal-content">
+		<h3>Label Your Shape</h3>
+		<input type="text" id="shapeLabelInput" placeholder="Enter label" />
+		<div class="modal-buttons">
+		  <button id="saveLabelBtn">Save</button>
+		  <button id="cancelLabelBtn">Cancel</button>
+		</div>
+	  </div>
+	</div>
+
+<!------------------------------------------------------------>
+	<div id="legendContainer" class="legend-container"></div>
+
+<!------------------------------------------------------------>
+<!-- Spatial Analysis Modal Panel -->
+<div id="spatialAnalysisPanel" class="modal-panel hidden">
+  <div class="modal-header">
+    <h3>Spatial Analysis Results</h3>
+    <button class="close-btn" onclick="closeSpatialAnalysis()">✖</button>
+  </div>
+
+  <!-- CEC Table -->
+  <div class="panel-block">
+    <h4>Surrounding CECs (within 500m)</h4>
+    <div id="cecWarning" style="display: none; color: #b91c1c; font-weight: 500;">
+      ⚠️ CEC data not loaded. Please retry when data is available.
+    </div>
+    <table>
+      <thead>
+        <tr><th>CEC Reference Number</th><th>Year</th><th>Status</th><th>Activity Description</th></tr>
+      </thead>
+      <tbody id="cecResultsBody"></tbody>
+    </table>
+  </div>
+
+  
+  <!-- Receptors Table -->
+  <div class="panel-block">
+    <h4>Nearby/Intersecting Sensitive Receptors</h4>
+    <table>
+      <thead>
+        <tr><th>Feature</th><th>Distance</th></tr>
+      </thead>
+      <tbody id="receptorResultsBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Other Info Table -->
+  <div class="panel-block">
+    <h4>Other Information</h4>
+    <table class="no-vertical-border">
+      <tbody id="otherInfoTableBody">
+        <!-- These rows will be dynamically inserted -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Shape Properties Output -->
+  <div class="panel-block">
+    <h4>Shape Properties</h4>
+    <div id="shapePropertiesOutput">Select a shape to analyze.</div>
+  </div>
+</div>
+
+<!------------------------------------------------------------>
+<!-- Spatial Visualization Popup -->
+<div id="visualizationPopup" class="modal-panel small hidden">
+  <div class="modal-header">
+    <h3>Spatial Visualization</h3>
+    <button class="close-btn" onclick="closeVisualization()">✖</button>
+  </div>
+  <div id="visualizationMap" style="height: 300px;"></div>
+  <div id="layerLegendSelector"></div>
+</div>
+
+<!-- Spatial Results Modal -->
+<div id="spatialResultsModal" class="modal-overlay hidden">
+  <div class="modal-window">
+
+    <div class="modal-header">
+      <h2>Spatial Analysis Results</h2>
+
+      <div class="modal-actions">
+        <button id="downloadSpatialPDFBtn" class="btn small primary">⬇ Download PDF</button>
+        <button id="closeSpatialResultsBtn" class="btn small">✖ Close</button>
+      </div>
+    </div>
+
+    <div class="modal-body">
+      <div id="spatialResultsContent"></div>
+    </div>
+
+  </div>
+</div>
+
+<!------------------------------------------------------------>
+  <!-- JS Modules -->
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/mapBase.js"></script>
+  <script src="js/cecData.js"></script>
+  <script src="js/complaintsData.js"></script>
+  <script src="js/filters.js"></script>
+  <script src="js/geojsonLayers.js"></script>
+  <script src="js/analysisPreload.js"></script>
+  <script src="js/drawnShapesManager.js"></script>
+  <script src="js/toolpanelToggle.js"></script>
+  <script src="js/panel.js"></script>
+  <script src="js/unifiedSearch.js"></script>
+  <script src="js/inset.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/userUploads.js"></script>
+  <script src="js/spatialAnalysisV2.js"></script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>	
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://unpkg.com/shpjs@latest/dist/shp.min.js"></script>
+
+
+</body>
+</html>
+
